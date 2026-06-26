@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Picnic Date</title>
+    <style>
+        :root {
+            --primary-blue: #2b5c8f;
+            --light-blue: #e6f0fa;
+            --accent-blue: #4a90e2;
+            --bg-color: #f4f7f9;
+            --text-dark: #333333;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* --- PROPOSAL MODAL OVERLAY --- */
+        #proposal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--light-blue);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        #proposal-overlay h1 {
+            color: var(--primary-blue);
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .btn-container {
+            position: relative;
+            width: 500px;
+            height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .prop-btn {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        #yes-btn { 
+            background-color: var(--primary-blue); 
+            color: white;
+            z-index: 10;
+        }
+        #no-btn { 
+            background-color: #e06666; 
+            color: white; 
+            position: absolute;
+        }
+        
+        /* Who Are You Prompt layout */
+        #identity-prompt {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+            animation: fadeIn 0.4s ease forwards;
+        }
+        #identity-prompt p {
+            font-size: 1.2rem;
+            color: var(--primary-blue);
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .identity-btn {
+            padding: 10px 25px;
+            margin: 0 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: 2px solid var(--primary-blue);
+            border-radius: 6px;
+            background: white;
+            color: var(--primary-blue);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .identity-btn:hover {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        /* --- MAIN INTERFACE --- */
+        #main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            height: 100vh;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #main-content.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* --- LEFT SIDEBAR: RADIO --- */
+        .sidebar-left {
+            background-color: white;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .panel-title {
+            color: var(--primary-blue);
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-bottom: 2px solid var(--light-blue);
+            padding-bottom: 8px;
+            margin: 0;
+        }
+        .radio-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .song-option {
+            padding: 12px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            cursor: pointer;
+            background: var(--bg-color);
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        .song-option:hover { border-color: var(--accent-blue); }
+        .song-option.active {
+            background-color: var(--light-blue);
+            border-color: var(--primary-blue);
+            font-weight: bold;
+        }
+        #player-container {
+            margin-top: auto;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #000;
+            height: 40px;
+            position: relative;
+            opacity: 0.05; /* Keeps the player invisible/low profile but active */
+        }
+
+        /* --- CENTER: PICNIC AREA --- */
+        .picnic-area {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #ffffff 0%, #e6f0fa 100%);
+        }
+        .picnic-blanket {
+            width: 80%;
+            height: 70%;
+            background-color: #3a7bd5;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.2) 35px, rgba(255,255,255,.2) 70px);
+            border: 8px solid white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .picnic-blanket::before {
+            content: 'Drag food here! Double-click items to eat them.';
+            position: absolute;
+            bottom: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* LIVE NOTIFICATION BANNER */
+        #eat-announcement {
+            position: absolute;
+            top: 20px;
+            background: rgba(43, 92, 143, 0.9);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            z-index: 100;
+            pointer-events: none;
+        }
+        #eat-announcement.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- RIGHT SIDEBAR: BASKET --- */
+        .sidebar-right {
+            background-color: white;
+            border-left: 1px solid #ddd;
+            padding: 20px;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .basket-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            align-content: start;
+        }
+        .food-item {
+            background-color: var(--bg-color);
+            border: 1px dashed #bbb;
+            padding: 15px 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: grab;
+            user-select: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .food-item:active { cursor: grabbing; }
+        
+        /* Spawned food styling */
+        .dropped-food {
+            position: absolute;
+            padding: 10px 15px;
+            background: white;
+            border: 2px solid var(--primary-blue);
+            border-radius: 20px;
+            cursor: move;
+            user-select: none;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            font-size: 1.2rem;
+            transition: transform 0.1s ease;
+        }
+        .dropped-food:hover {
+            transform: scale(1.1);
+        }
+
+        /* --- LOWER RIGHT: CHAT BOX --- */
+        .chat-panel {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            height: 280px;
+            background: var(--bg-color);
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        .msg {
+            padding: 8px 12px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .msg.received { background: white; align-self: flex-start; border: 1px solid #eee;}
+        .msg.sent { background: var(--primary-blue); color: white; align-self: flex-end; }
+        .chat-input-area {
+            display: flex;
+            border-top: 1px solid #ddd;
+            background: white;
+            border-radius: 0 0 8px 8px;
+        }
+        .chat-input-area input {
+            flex: 1;
+            border: none;
+            padding: 10px;
+            outline: none;
+            font-size: 0.85rem;
+        }
+        .chat-input-area button {
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="proposal-overlay">
+        <div id="proposal-question" style="text-align: center;">
+            <h1>Would you like to go on a date with me?</h1>
+            <div class="btn-container">
+                <button id="yes-btn" class="prop-btn">Yes</button>
+                <button id="no-btn" class="prop-btn">No</button>
+            </div>
+        </div>
+
+        <div id="identity-prompt">
+            <p>Who is entering the picnic? ✨</p>
+            <button class="identity-btn" data-user="Tubby">I am Tubby 🐻</button>
+            <button class="identity-btn" data-user="Pani">I am Pani 🦊</button>
+        </div>
+    </div>
+
+    <div id="main-content">
+        
+        <div class="sidebar-left">
+            <p class="panel-title">Live Radio</p>
+            <div class="radio-container">
+                <div class="song-option" data-video="_MYIWXjilzo">🎵 Ginintuang Tanawin</div>
+                <div class="song-option" data-video="Kq4dbZJakMs">🎵 Blue</div>
+                <div class="song-option" data-video="l5ta60yfryc">🎵 Ikaw at Ako</div>
+            </div>
+            <div id="player-container">
+                <div id="player"></div>
+            </div>
+        </div>
+
+        <div class="picnic-area" id="picnic-canvas">
+            <div id="eat-announcement"></div>
+            <div class="picnic-blanket" id="blanket"></div>
+        </div>
+
+        <div class="sidebar-right">
+            <div>
+                <p class="panel-title" style="margin-bottom:15px;">Food Basket</p>
+                <div class="basket-grid">
+                    <div class="food-item" draggable="true" data-food="🍔 Burger">🍔 Burger</div>
+                    <div class="food-item" draggable="true" data-food="🍗 Chicken Inasal">🍗 Inasal</div>
+                    <div class="food-item" draggable="true" data-food="🍫 Chocolate">🍫 Chocolate</div>
+                    <div class="food-item" draggable="true" data-food="🫐 Blueberry">🫐 Blueberry</div>
+                    <div class="food-item" draggable="true" data-food="🍟 Fries">🍟 Fries</div>
+                    <div class="food-item" draggable="true" data-food="🍰 Cheesecake">🍰 Cheesecake</div>
+                </div>
+            </div>
+
+            <div>
+                <p class="panel-title" style="margin-bottom:10px;">Our Chat</p>
+                <div class="chat-panel">
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off">
+                        <button id="chat-send">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyApNHyQSV3Q_G6a2wWokM2HsLyHWdVIL7E",
+            authDomain: "our-picnic.firebaseapp.com",
+            databaseURL: "https://our-picnic-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "our-picnic",
+            storageBucket: "our-picnic.firebasestorage.app",
+            messagingSenderId: "897218345057",
+            appId: "1:897218345057:web:4a2e02be38e65c024e5220"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const mySessionId = Math.random().toString(36).substring(2, 9);
+        
+        let currentUserNickname = "Someone"; // Will change based on identity choice
+
+        // Web Audio Context for generating custom pop sound effect natively without files
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playPopSound() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.12);
+        }
+
+        // --- EVADING NO BUTTON MECHANIC ---
+        const noBtn = document.getElementById('no-btn');
+        const yesBtn = document.getElementById('yes-btn');
+        const overlay = document.getElementById('proposal-overlay');
+        const mainContent = document.getElementById('main-content');
+        let noCount = 0;
+
+        noBtn.style.left = "300px";
+        noBtn.style.top = "50px";
+
+        function moveNoButton() {
+            noCount++;
+            if (noCount === 1) {
+                noBtn.style.left = "50px";
+                noBtn.style.top = "10px";
+            } else if (noCount === 2) {
+                noBtn.style.left = "380px";
+                noBtn.style.top = "110px";
+            } else {
+                noBtn.style.left = "-9999px";
+                noBtn.style.top = "-9999px";
+            }
+        }
+        noBtn.addEventListener('mouseover', moveNoButton);
+        noBtn.addEventListener('click', moveNoButton);
+
+        // Click Yes -> Transition to profile choose
+        yesBtn.addEventListener('click', () => {
+            document.getElementById('proposal-question').style.display = 'none';
+            document.getElementById('identity-prompt').style.display = 'block';
+        });
+
+        // Pick Nickname -> Starts background audio loop context automatically
+        document.querySelectorAll('.identity-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentUserNickname = btn.getAttribute('data-user');
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    mainContent.classList.add('visible');
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    initYouTube();
+                }, 500);
+            });
+        });
+
+        // --- MUSIC RULES WITH AUTOMATED AUTOPLAY SYNC ---
+        let player;
+        let pendingVideoId = "_MYIWXjilzo"; 
+
+        window.initYouTube = function() {
+            if (typeof YT !== 'undefined' && YT.loaded) {
+                player = new YT.Player('player', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: pendingVideoId,
+                    playerVars: { 
+                        'autoplay': 1, 
+                        'controls': 1,
+                        'playlist': pendingVideoId // Loop track fallback infrastructure
+                    },
+                    events: { 'onReady': onPlayerReady }
+                });
+            }
+        };
+
+        function onPlayerReady(event) {
+            event.target.playVideo(); // Direct play command issued immediately post interaction context
+
+            onValue(ref(db, 'radio/currentVideo'), (snapshot) => {
+                const videoId = snapshot.val();
+                if (videoId && player && typeof player.loadVideoById === 'function') {
+                    const currentId = player.getVideoUrl().split('v=')[1]?.split('&')[0];
+                    if (currentId !== videoId) {
+                        player.loadVideoById(videoId);
+                        updateRadioActiveUI(videoId);
+                    }
+                }
+            });
+        }
+
+        function updateRadioActiveUI(videoId) {
+            document.querySelectorAll('.song-option').forEach(opt => {
+                if (opt.getAttribute('data-video') === videoId) {
+                    opt.classList.add('active');
+                } else {
+                    opt.classList.remove('active');
+                }
+            });
+        }
+
+        document.querySelectorAll('.song-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const videoId = option.getAttribute('data-video');
+                set(ref(db, 'radio/currentVideo'), videoId);
+            });
+        });
+
+        window.onYouTubeIframeAPIReady = function() {
+            if (mainContent.classList.contains('visible')) {
+                window.initYouTube();
+            }
+        };
+
+        // --- FOOD SELECTION & INTERACTIVE EATING SYNC ---
+        const picnicCanvas = document.getElementById('picnic-canvas');
+        const announcementBanner = document.getElementById('eat-announcement');
+        let activeDraggedFoodType = null;
+
+        document.querySelectorAll('.food-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                activeDraggedFoodType = item.getAttribute('data-food');
+            });
+        });
+
+        picnicCanvas.addEventListener('dragover', (e) => { e.preventDefault(); });
+
+        picnicCanvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!activeDraggedFoodType) return;
+
+            const rect = picnicCanvas.getBoundingClientRect();
+            const posX = ((e.clientX - rect.left) / rect.width) * 100; 
+            const posY = ((e.clientY - rect.top) / rect.height) * 100;
+
+            const foodRef = push(ref(db, 'picnic/foods'));
+            set(foodRef, {
+                id: foodRef.key,
+                type: activeDraggedFoodType,
+                x: posX,
+                y: posY
+            });
+            activeDraggedFoodType = null;
+        });
+
+        // Listen for food removal announcements
+        onValue(ref(db, 'picnic/eatEvents'), (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+            
+            // Render text updates based on user configurations
+            const eatingPhrase = data.user === "Tubby" ? "Tubby eated" : "Pani eat";
+            announcementBanner.innerText = `✨ ${eatingPhrase} ${data.food}!`;
+            announcementBanner.classList.add('show');
+            
+            // Play Pop Sound effect and burst colorful confetti particles on screen!
+            playPopSound();
+            confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
+
+            setTimeout(() => {
+                announcementBanner.classList.remove('show');
+            }, 3000);
+        });
+
+        onValue(ref(db, 'picnic/foods'), (snapshot) => {
+            document.querySelectorAll('.dropped-food').forEach(el => el.remove());
+            const data = snapshot.val();
+            if (!data) return;
+
+            Object.values(data).forEach(food => {
+                const foodDiv = document.createElement('div');
+                foodDiv.className = 'dropped-food';
+                foodDiv.innerText = food.type;
+                foodDiv.style.left = `${food.x}%`;
+                foodDiv.style.top = `${food.y}%`;
+
+                // Double Click Action -> Trigger Custom Phrases and Event logs globally
+                foodDiv.addEventListener('dblclick', () => {
+                    // Update the global action banner reference record first
+                    set(ref(db, 'picnic/eatEvents'), {
+                        user: currentUserNickname,
+                        food: food.type,
+                        timestamp: Date.now()
+                    });
+                    // Remove object representation instances
+                    set(ref(db, `picnic/foods/${food.id}`), null);
+                });
+
+                // Reposition tracking layout listener rules
+                foodDiv.addEventListener('mousedown', (e) => {
+                    let moveHandler = (moveEvent) => {
+                        const rect = picnicCanvas.getBoundingClientRect();
+                        let newX = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+                        let newY = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+                        set(ref(db, `picnic/foods/${food.id}`), {
+                            id: food.id,
+                            type: food.type,
+                            x: newX,
+                            y: newY
+                        });
+                    };
+                    window.addEventListener('mousemove', moveHandler);
+                    window.addEventListener('mouseup', () => {
+                        window.removeEventListener('mousemove', moveHandler);
+                    }, { once: true });
+                });
+
+                picnicCanvas.appendChild(foodDiv);
+            });
+        });
+
+        // --- REAL-TIME INTERACTIVE CHAT ENGINE ---
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        const chatMessages = document.getElementById('chat-messages');
+
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            const newMsgRef = push(ref(db, 'chat/messages'));
+            set(newMsgRef, {
+                sender: currentUserNickname, // Sent via chosen explicit nickname
+                senderId: mySessionId,
+                text: text,
+                timestamp: Date.now()
+            });
+            chatInput.value = '';
+        }
+
+        chatSend.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        onValue(ref(db, 'chat/messages'), (snapshot) => {
+            chatMessages.innerHTML = '';
+            const data = snapshot.val();
+            if (!data) return;
+
+            Object.values(data).forEach(msg => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `msg ${msg.senderId === mySessionId ? 'sent' : 'received'}`;
+                // Displays specific identifier prefixes next to chat content boxes
+                msgDiv.innerText = `${msg.sender}: ${msg.text}`;
+                chatMessages.appendChild(msgDiv);
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+    </script>
+</body>
+</html>
