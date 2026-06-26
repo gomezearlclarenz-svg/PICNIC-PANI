@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Picnic Date</title>
+    <style>
+        :root {
+            --primary-blue: #2b5c8f;
+            --light-blue: #e6f0fa;
+            --accent-blue: #4a90e2;
+            --bg-color: #f4f7f9;
+            --text-dark: #333333;
+        }
+
+        /* Cute Custom Cartoon Hand Cursors */
+        html, body, .picnic-area, .dropped-food, .food-item, #drawing-board {
+            cursor: grab !important;
+        }
+        *:active {
+            cursor: grabbing !important;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* --- PROPOSAL MODAL OVERLAY --- */
+        #proposal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--light-blue);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        #proposal-overlay h1 {
+            color: var(--primary-blue);
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .btn-container {
+            position: relative;
+            width: 500px;
+            height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .prop-btn {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        #yes-btn { 
+            background-color: var(--primary-blue); 
+            color: white;
+            z-index: 10;
+        }
+        #no-btn { 
+            background-color: #e06666; 
+            color: white; 
+            position: absolute;
+        }
+        
+        #identity-prompt {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+            animation: fadeIn 0.4s ease forwards;
+        }
+        #identity-prompt p {
+            font-size: 1.2rem;
+            color: var(--primary-blue);
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .identity-btn {
+            padding: 10px 25px;
+            margin: 0 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: 2px solid var(--primary-blue);
+            border-radius: 6px;
+            background: white;
+            color: var(--primary-blue);
+            transition: all 0.2s;
+        }
+        .identity-btn:hover {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        /* --- MAIN INTERFACE --- */
+        #main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            height: 100vh;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            position: relative;
+        }
+        #main-content.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* --- DRAWING CANVAS (COLLAPSIBLE) --- */
+        #canvas-panel {
+            position: absolute;
+            left: -320px; 
+            top: 0;
+            width: 320px;
+            height: 100vh;
+            background: white;
+            border-right: 3px solid var(--primary-blue);
+            box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+            transition: left 0.3s ease;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+        }
+        #canvas-panel.open {
+            left: 0;
+        }
+        #canvas-toggle {
+            position: absolute;
+            right: -40px;
+            top: 20px;
+            width: 40px;
+            height: 50px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 0 8px 8px 0;
+            font-size: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 3px 0 5px rgba(0,0,0,0.1);
+        }
+        .canvas-controls {
+            padding: 15px;
+            background: var(--light-blue);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            border-bottom: 2px solid var(--primary-blue);
+        }
+        .canvas-controls input[type="color"] {
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 5px;
+        }
+        #drawing-board {
+            flex: 1;
+            background: white;
+        }
+
+        /* --- LEFT SIDEBAR: RADIO --- */
+        .sidebar-left {
+            background-color: white;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
+        .panel-title {
+            color: var(--primary-blue);
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-bottom: 2px solid var(--light-blue);
+            padding-bottom: 8px;
+            margin: 0;
+        }
+        .radio-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .song-option {
+            padding: 12px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background: var(--bg-color);
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        .song-option:hover { border-color: var(--accent-blue); }
+        .song-option.active {
+            background-color: var(--light-blue);
+            border-color: var(--primary-blue);
+            font-weight: bold;
+        }
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            color: var(--primary-blue);
+            font-weight: bold;
+        }
+        #volume-slider {
+            flex: 1;
+            accent-color: var(--primary-blue);
+        }
+        #player-container {
+            margin-top: auto;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #000;
+            height: 40px;
+            opacity: 0.05;
+        }
+
+        /* --- CENTER: PICNIC AREA --- */
+        .picnic-area {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #ffffff 0%, #e6f0fa 100%);
+        }
+        .picnic-blanket {
+            width: 80%;
+            height: 70%;
+            background-color: #3a7bd5;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.2) 35px, rgba(255,255,255,.2) 70px);
+            border: 8px solid white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .picnic-blanket::before {
+            content: 'Drag food here! Double-click to eat.';
+            position: absolute;
+            bottom: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.85rem;
+            color: #666;
+            font-style: italic;
+            width: 100%;
+            text-align: center;
+        }
+
+        #eat-announcement {
+            position: absolute;
+            top: 20px;
+            background: rgba(43, 92, 143, 0.9);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            z-index: 100;
+            pointer-events: none;
+        }
+        #eat-announcement.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- RIGHT SIDEBAR: BASKET --- */
+        .sidebar-right {
+            background-color: white;
+            border-left: 1px solid #ddd;
+            padding: 20px;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .basket-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            align-content: start;
+            justify-items: center;
+        }
+        
+        .food-item {
+            font-size: 3.5rem; 
+            user-select: none;
+            transition: transform 0.2s ease;
+            filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.2)); 
+        }
+        .food-item:hover { transform: scale(1.15) rotate(5deg); }
+        .food-item:active { transform: scale(0.95); }
+        
+        .dropped-food {
+            position: absolute;
+            font-size: 3.5rem;
+            user-select: none;
+            filter: drop-shadow(0px 10px 8px rgba(0,0,0,0.3));
+            transition: transform 0.1s ease;
+        }
+        .dropped-food:hover { transform: scale(1.1); }
+
+        /* --- BLUE NOTEPAD CHAT --- */
+        .chat-panel {
+            border: 2px solid var(--primary-blue);
+            border-radius: 4px 12px 12px 12px;
+            display: flex;
+            flex-direction: column;
+            height: 280px;
+            background: #f0f8ff; 
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05), 3px 3px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .chat-panel::before {
+            content: '';
+            position: absolute;
+            top: -10px; left: 10px; right: 10px; height: 15px;
+            background-image: radial-gradient(circle, #888 3px, transparent 4px);
+            background-size: 20px 15px;
+            background-repeat: repeat-x;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 15px 10px 10px 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.9rem;
+            background-image: repeating-linear-gradient(transparent, transparent 29px, #bcd4e6 30px);
+            line-height: 30px;
+        }
+        .msg {
+            padding: 4px 12px;
+            border-radius: 12px;
+            max-width: 85%;
+            word-wrap: break-word;
+            line-height: 1.4;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .msg.received { background: white; align-self: flex-start; border: 1px solid #d0e1f9;}
+        .msg.sent { background: var(--primary-blue); color: white; align-self: flex-end; }
+        
+        .chat-input-area {
+            display: flex;
+            border-top: 2px solid var(--primary-blue);
+            background: white;
+            border-radius: 0 0 10px 10px;
+            padding: 5px;
+        }
+        .chat-input-area input {
+            flex: 1;
+            border: none;
+            padding: 10px;
+            outline: none;
+            font-size: 0.9rem;
+            background: transparent;
+        }
+        .chat-input-area button {
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0 15px;
+            font-weight: bold;
+        }
+
+        /* --- REALTIME PARTNER CURSOR OVERLAYS --- */
+        .remote-cursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            font-size: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: top 0.08s linear, left 0.08s linear;
+        }
+        .remote-cursor-label {
+            background: var(--primary-blue);
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: -5px;
+            white-space: nowrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* --- FLOATING CORNER HEARTS SYSTEM --- */
+        .floating-heart {
+            position: fixed;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 999;
+            animation: floatUpHeart 3.5s ease-out forwards;
+        }
+        @keyframes floatUpHeart {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            12% { opacity: 1; transform: translateY(-15px) scale(1.2); }
+            100% { transform: translateY(-150px) scale(0.7); opacity: 0; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="proposal-overlay">
+        <div id="proposal-question" style="text-align: center;">
+            <h1>Would you like to go on a date with me?</h1>
+            <div class="btn-container">
+                <button id="yes-btn" class="prop-btn">Yes</button>
+                <button id="no-btn" class="prop-btn">No</button>
+            </div>
+        </div>
+
+        <div id="identity-prompt">
+            <p>Who is entering the picnic? ✨</p>
+            <button class="identity-btn" data-user="Tubby">I am Tubby 🐻</button>
+            <button class="identity-btn" data-user="Pani">I am Pani 🦊</button>
+        </div>
+    </div>
+
+    <div id="main-content">
+        
+        <div id="canvas-panel">
+            <button id="canvas-toggle">🎨</button>
+            <div class="canvas-controls">
+                <input type="color" id="brush-color" value="#2b5c8f">
+                <input type="range" id="brush-size" min="1" max="20" value="5" style="flex:1;">
+                <button id="clear-canvas" style="background:var(--primary-blue);color:white;border:none;padding:5px 8px;border-radius:4px;">Clear</button>
+                <button id="save-canvas" style="background:#27ae60;color:white;border:none;padding:5px 8px;border-radius:4px;font-weight:bold;">Save</button>
+            </div>
+            <canvas id="drawing-board" width="320" height="800"></canvas>
+        </div>
+
+        <div class="sidebar-left">
+            <p class="panel-title">Live Radio</p>
+            <div class="radio-container">
+                <div class="song-option" data-video="_MYIWXjilzo">🎵 Ginintuang Tanawin</div>
+                <div class="song-option" data-video="Kq4dbZJakMs">🎵 Blue</div>
+                <div class="song-option" data-video="l5ta60yfryc">🎵 Ikaw at Ako</div>
+            </div>
+            <div class="volume-control">
+                🔊 <input type="range" id="volume-slider" min="0" max="100" value="100">
+            </div>
+            <div id="player-container">
+                <div id="player"></div>
+            </div>
+        </div>
+
+        <div class="picnic-area" id="picnic-canvas">
+            <div id="eat-announcement"></div>
+            <div class="picnic-blanket" id="blanket"></div>
+        </div>
+
+        <div class="sidebar-right">
+            <div>
+                <p class="panel-title" style="margin-bottom:15px;">Food Basket</p>
+                <div class="basket-grid">
+                    <div class="food-item" draggable="true" data-food="Burger" data-emoji="🍔">🍔</div>
+                    <div class="food-item" draggable="true" data-food="Chicken Inasal" data-emoji="🍗">🍗</div>
+                    <div class="food-item" draggable="true" data-food="Chocolate" data-emoji="🍫">🍫</div>
+                    <div class="food-item" draggable="true" data-food="Blueberry" data-emoji="🫐">🫐</div>
+                    <div class="food-item" draggable="true" data-food="Fries" data-emoji="🍟">🍟</div>
+                    <div class="food-item" draggable="true" data-food="Cheesecake" data-emoji="🍰">🍰</div>
+                </div>
+            </div>
+
+            <div>
+                <p class="panel-title" style="margin-bottom:10px;">Our Notes 📝</p>
+                <div class="chat-panel">
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Write a note..." autocomplete="off">
+                        <button id="chat-send">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="remote-cursors-layer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push, onChildAdded, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyApNHyQSV3Q_G6a2wWokM2HsLyHWdVIL7E",
+            authDomain: "our-picnic.firebaseapp.com",
+            databaseURL: "https://our-picnic-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "our-picnic",
+            storageBucket: "our-picnic.firebasestorage.app",
+            messagingSenderId: "897218345057",
+            appId: "1:897218345057:web:4a2e02be38e65c024e5220"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const mySessionId = Math.random().toString(36).substring(2, 9);
+        
+        let currentUserNickname = "Someone"; 
+        let isGrabbing = false;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playPopSound() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.12);
+        }
+
+        const noBtn = document.getElementById('no-btn');
+        const yesBtn = document.getElementById('yes-btn');
+        const overlay = document.getElementById('proposal-overlay');
+        const mainContent = document.getElementById('main-content');
+        let noCount = 0;
+
+        noBtn.style.left = "300px";
+        noBtn.style.top = "50px";
+
+        function moveNoButton() {
+            noCount++;
+            if (noCount === 1) {
+                noBtn.style.left = "50px";
+                noBtn.style.top = "10px";
+            } else if (noCount === 2) {
+                noBtn.style.left = "380px";
+                noBtn.style.top = "110px";
+            } else {
+                noBtn.style.left = "-9999px";
+                noBtn.style.top = "-9999px";
+            }
+        }
+        noBtn.addEventListener('mouseover', moveNoButton);
+        noBtn.addEventListener('click', moveNoButton);
+
+        yesBtn.addEventListener('click', () => {
+            document.getElementById('proposal-question').style.display = 'none';
+            document.getElementById('identity-prompt').style.display = 'block';
+        });
+
+        document.querySelectorAll('.identity-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentUserNickname = btn.getAttribute('data-user');
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    mainContent.classList.add('visible');
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    initYouTube();
+                    resizeCanvas();
+                    startCornerHearts();
+                    setupRealtimeCursors();
+                }, 500);
+            });
+        });
+
+        // --- MUSIC & VOLUME ---
+        let player;
+        let pendingVideoId = "_MYIWXjilzo"; 
+        const volumeSlider = document.getElementById('volume-slider');
+
+        window.initYouTube = function() {
+            if (typeof YT !== 'undefined' && YT.loaded) {
+                player = new YT.Player('player', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: pendingVideoId,
+                    playerVars: { 'autoplay': 1, 'controls': 1 },
+                    events: { 'onReady': onPlayerReady }
+                });
+            }
+        };
+
+        function onPlayerReady(event) {
+            event.target.playVideo();
+            player.setVolume(volumeSlider.value);
+
+            volumeSlider.addEventListener('input', (e) => {
+                if (player && player.setVolume) {
+                    player.setVolume(e.target.value);
+                }
+            });
+
+            onValue(ref(db, 'radio/currentVideo'), (snapshot) => {
+                const videoId = snapshot.val();
+                if (videoId && player && typeof player.loadVideoById === 'function') {
+                    const currentId = player.getVideoUrl().split('v=')[1]?.split('&')[0];
+                    if (currentId !== videoId) {
+                        player.loadVideoById(videoId);
+                        updateRadioActiveUI(videoId);
+                    }
+                }
+            });
+        }
+
+        function updateRadioActiveUI(videoId) {
+            document.querySelectorAll('.song-option').forEach(opt => {
+                if (opt.getAttribute('data-video') === videoId) {
+                    opt.classList.add('active');
+                } else {
+                    opt.classList.remove('active');
+                }
+            });
+        }
+
+        document.querySelectorAll('.song-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const videoId = option.getAttribute('data-video');
+                set(ref(db, 'radio/currentVideo'), videoId);
+            });
+        });
+
+        window.onYouTubeIframeAPIReady = function() {
+            if (mainContent.classList.contains('visible')) {
+                window.initYouTube();
+            }
+        };
+
+        // --- FOOD SELECTION ---
+        const picnicCanvas = document.getElementById('picnic-canvas');
+        const announcementBanner = document.getElementById('eat-announcement');
+        let activeDraggedEmoji = null;
+        let activeDraggedFoodName = null;
+
+        document.querySelectorAll('.food-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                activeDraggedEmoji = item.getAttribute('data-emoji');
+                activeDraggedFoodName = item.getAttribute('data-food');
+            });
+        });
+
+        picnicCanvas.addEventListener('dragover', (e) => { e.preventDefault(); });
+
+        picnicCanvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!activeDraggedEmoji) return;
+
+            const rect = picnicCanvas.getBoundingClientRect();
+            const posX = ((e.clientX - rect.left) / rect.width) * 100; 
+            const posY = ((e.clientY - rect.top) / rect.height) * 100;
+
+            const foodRef = push(ref(db, 'picnic/foods'));
+            set(foodRef, {
+                id: foodRef.key,
+                emoji: activeDraggedEmoji,
+                name: activeDraggedFoodName,
+                x: posX,
+                y: posY
+            });
+            activeDraggedEmoji = null;
+        });
+
+        onValue(ref(db, 'picnic/eatEvents'), (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+            
+            const eatingPhrase = data.user === "Tubby" ? "Tubby eated" : "Pani eat";
+            announcementBanner.innerText = `✨ ${eatingPhrase} the ${data.food}!`;
+            announcementBanner.classList.add('show');
+            
+            playPopSound();
+            confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
+
+            setTimeout(() => {
+                announcementBanner.classList.remove('show');
+            }, 3000);
+        });
+
+        onValue(ref(db, 'picnic/foods'), (snapshot) => {
+            document.querySelectorAll('.dropped-food').forEach(el => el.remove());
+            const data = snapshot.val();
+            if (!data) return;
+
+            Object.values(data).forEach(food => {
+                const foodDiv = document.createElement('div');
+                foodDiv.className = 'dropped-food';
+                foodDiv.innerText = food.emoji;
+                foodDiv.style.left = `calc(${food.x}% - 30px)`; 
+                foodDiv.style.top = `calc(${food.y}% - 30px)`;
+
+                foodDiv.addEventListener('dblclick', () => {
+                    set(ref(db, 'picnic/eatEvents'), {
+                        user: currentUserNickname,
+                        food: food.name,
+                        timestamp: Date.now()
+                    });
+                    set(ref(db, `picnic/foods/${food.id}`), null);
+                });
+
+                foodDiv.addEventListener('mousedown', (e) => {
+                    let moveHandler = (moveEvent) => {
+                        const rect = picnicCanvas.getBoundingClientRect();
+                        let newX = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+                        let newY = ((moveEvent.clientY - rect.top) / rect.height) * 100;
+                        set(ref(db, `picnic/foods/${food.id}`), {
+                            id: food.id,
+                            emoji: food.emoji,
+                            name: food.name,
+                            x: newX,
+                            y: newY
+                        });
+                    };
+                    window.addEventListener('mousemove', moveHandler);
+                    window.addEventListener('mouseup', () => {
+                        window.removeEventListener('mousemove', moveHandler);
+                    }, { once: true });
+                });
+
+                picnicCanvas.appendChild(foodDiv);
+            });
+        });
+
+        // --- REAL-TIME CHAT ---
+        const chatInput = document.getElementById('chat-input');
+        const chatSend = document.getElementById('chat-send');
+        const chatMessages = document.getElementById('chat-messages');
+
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            const newMsgRef = push(ref(db, 'chat/messages'));
+            set(newMsgRef, {
+                sender: currentUserNickname, 
+                senderId: mySessionId,
+                text: text,
+                timestamp: Date.now()
+            });
+            chatInput.value = '';
+        }
+
+        chatSend.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        onValue(ref(db, 'chat/messages'), (snapshot) => {
+            chatMessages.innerHTML = '';
+            const data = snapshot.val();
+            if (!data) return;
+
+            Object.values(data).forEach(msg => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `msg ${msg.senderId === mySessionId ? 'sent' : 'received'}`;
+                msgDiv.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+                chatMessages.appendChild(msgDiv);
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        // --- LIVE DRAWING CANVAS & SAVE OPTION ---
+        const canvasPanel = document.getElementById('canvas-panel');
+        const canvasToggle = document.getElementById('canvas-toggle');
+        const drawingBoard = document.getElementById('drawing-board');
+        const ctx = drawingBoard.getContext('2d');
+        const brushColor = document.getElementById('brush-color');
+        const brushSize = document.getElementById('brush-size');
+        const clearBtn = document.getElementById('clear-canvas');
+        const saveBtn = document.getElementById('save-canvas');
+        
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        function resizeCanvas() {
+            drawingBoard.width = canvasPanel.clientWidth;
+            drawingBoard.height = canvasPanel.clientHeight - 60; 
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        canvasToggle.addEventListener('click', () => {
+            canvasPanel.classList.toggle('open');
+            canvasToggle.innerText = canvasPanel.classList.contains('open') ? '◀' : '🎨';
+        });
+
+        function draw(x, y, isDown, color, size, emit) {
+            if (isDown) {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = size;
+                ctx.lineJoin = "round";
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.closePath();
+                ctx.stroke();
+            }
+            lastX = x; lastY = y;
+
+            if (emit && isDown) {
+                push(ref(db, 'canvas/strokes'), {
+                    x0: lastX, y0: lastY,
+                    x1: x, y1: y,
+                    color: color,
+                    size: size
+                });
+            }
+        }
+
+        drawingBoard.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            lastX = e.offsetX;
+            lastY = e.offsetY;
+        });
+
+        drawingBoard.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                draw(e.offsetX, e.offsetY, true, brushColor.value, brushSize.value, true);
+            }
+        });
+
+        drawingBoard.addEventListener('mouseup', () => isDrawing = false);
+        drawingBoard.addEventListener('mouseout', () => isDrawing = false);
+
+        clearBtn.addEventListener('click', () => {
+            set(ref(db, 'canvas/strokes'), null);
+            set(ref(db, 'canvas/clear'), Date.now());
+        });
+
+        // Save artwork feature
+        saveBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'our-picnic-artwork.png';
+            link.href = drawingBoard.toDataURL();
+            link.click();
+        });
+
+        onChildAdded(ref(db, 'canvas/strokes'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                ctx.beginPath();
+                ctx.strokeStyle = data.color;
+                ctx.lineWidth = data.size;
+                ctx.lineJoin = "round";
+                ctx.moveTo(data.x0, data.y0);
+                ctx.lineTo(data.x1, data.y1);
+                ctx.closePath();
+                ctx.stroke();
+            }
+        });
+
+        onValue(ref(db, 'canvas/clear'), (snapshot) => {
+            if (snapshot.val()) {
+                ctx.clearRect(0, 0, drawingBoard.width, drawingBoard.height);
+            }
+        });
+
+        // --- REALTIME CURSOR SHARING LOGIC ---
+        function setupRealtimeCursors() {
+            const cursorsLayer = document.getElementById('remote-cursors-layer');
+
+            function updateMyCursorData(e) {
+                if (!mainContent.classList.contains('visible')) return;
+                const pctX = (e.clientX / window.innerWidth) * 100;
+                const pctY = (e.clientY / window.innerHeight) * 100;
+
+                set(ref(db, `cursors/${mySessionId}`), {
+                    x: pctX,
+                    y: pctY,
+                    name: currentUserNickname,
+                    grabbing: isGrabbing
+                });
+            }
+
+            window.addEventListener('mousemove', updateMyCursorData);
+            
+            window.addEventListener('mousedown', () => { 
+                isGrabbing = true; 
+                set(ref(db, `cursors/${mySessionId}/grabbing`), true);
+            });
+            window.addEventListener('mouseup', () => { 
+                isGrabbing = false; 
+                set(ref(db, `cursors/${mySessionId}/grabbing`), false);
+            });
+
+            // Automatically clean up your tracking cursor icon if you close the tab
+            onDisconnect(ref(db, `cursors/${mySessionId}`)).remove();
+
+            // Render partner's cursor live on screen
+            onValue(ref(db, 'cursors'), (snapshot) => {
+                cursorsLayer.innerHTML = '';
+                const data = snapshot.val();
+                if (!data) return;
+
+                Object.keys(data).forEach(id => {
+                    if (id === mySessionId) return; // Ignore your own cursor representation
+                    const cData = data[id];
+
+                    const remoteCursorDiv = document.createElement('div');
+                    remoteCursorDiv.className = 'remote-cursor';
+                    remoteCursorDiv.style.left = `${cData.x}%`;
+                    remoteCursorDiv.style.top = `${cData.y}%`;
+
+                    // Fold/Unfold hand emojis explicitly based on clicks/grabs
+                    const handEmoji = cData.grabbing ? '✊' : '✋';
+
+                    remoteCursorDiv.innerHTML = `
+                        <div>${handEmoji}</div>
+                        <div class="remote-cursor-label">${cData.name}</div>
+                    `;
+                    cursorsLayer.appendChild(remoteCursorDiv);
+                });
+            });
+        }
+
+        // --- FLOATING CORNER HEARTS INFRASTRUCTURE ---
+        function startCornerHearts() {
+            setInterval(() => {
+                const heart = document.createElement('div');
+                heart.className = 'floating-heart';
+                heart.innerText = '❤️';
+
+                const corners = ['tl', 'tr', 'bl', 'br'];
+                const selectedCorner = corners[Math.floor(Math.random() * corners.length)];
+                const randomShift = Math.random() * 50;
+
+                if (selectedCorner === 'tl') {
+                    heart.style.left = `${20 + randomShift}px`;
+                    heart.style.top = `${20 + randomShift}px`;
+                } else if (selectedCorner === 'tr') {
+                    heart.style.right = `${20 + randomShift}px`;
+                    heart.style.top = `${20 + randomShift}px`;
+                } else if (selectedCorner === 'bl') {
+                    heart.style.left = `${20 + randomShift}px`;
+                    heart.style.bottom = `${20 + randomShift}px`;
+                } else if (selectedCorner === 'br') {
+                    heart.style.right = `${20 + randomShift}px`;
+                    heart.style.bottom = `${20 + randomShift}px`;
+                }
+
+                document.body.appendChild(heart);
+                setTimeout(() => heart.remove(), 3500);
+            }, 700); 
+        }
+
+    </script>
+</body>
+</html>
